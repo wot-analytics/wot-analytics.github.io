@@ -1,1 +1,661 @@
-<h1>hello</h1>h1>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeria Map WoT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #020617;
+            --card-bg: rgba(30, 41, 59, 0.5);
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --font-family: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(129, 140, 248, 0.05) 0%, transparent 50%);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 40%, #c084fc 70%, #38bdf8 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            animation: shine 5s linear infinite;
+            text-align: center;
+        }
+
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.6;
+            margin-bottom: 40px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 48px;
+        }
+
+        #mapSearch {
+            width: 100%;
+            padding: 16px 24px;
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 99px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #mapSearch:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 32px;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        .map-card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--accent-color);
+            background-color: rgba(30, 41, 59, 0.7);
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            background: #0f172a;
+        }
+
+        .image-container img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: opacity 0.4s;
+        }
+
+        .map-info {
+            padding: 20px;
+        }
+
+        .map-name {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 6px;
+        }
+
+        .internal-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            opacity: 0.4;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
+        /* Side Preview Panel */
+        #preview-panel {
+            position: fixed;
+            top: 0;
+            left: -75%;
+            width: 75%;
+            height: 100vh;
+            background: #020617;
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            padding: 40px;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        #preview-panel.active {
+            transform: translateX(100%);
+        }
+
+        #preview-panel img {
+            width: 90%;
+            aspect-ratio: 1 / 1;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.1);
+            background: #000;
+        }
+
+        .preview-details {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .preview-name {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #main-wrapper {
+            width: 100%;
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        body.preview-open #main-wrapper {
+            transform: translateX(75%);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: white; width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.3s;
+        }
+
+        .close-btn:hover { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; transform: rotate(90deg); }
+
+        .no-results { grid-column: 1 / -1; padding: 80px; text-align: center; font-size: 1.5rem; opacity: 0.5; display: none; }
+    </style>
+</head>
+<body>
+    <div id="preview-panel">
+        <div class="close-btn" onclick="closePreview()">×</div>
+        <img id="preview-img" src="" alt="">
+        <div class="preview-details">
+            <div id="preview-name" class="preview-name"></div>
+            <div id="preview-internal" class="preview-internal"></div>
+        </div>
+    </div>
+
+    <div id="main-wrapper">
+        <h1>Map Gallery Explorer</h1>
+        <div class="subtitle">A visual library of World of Tanks battlegrounds</div>
+
+        <div class="search-container">
+            <input type="text" id="mapSearch" placeholder="Wyszukaj mapę...">
+        </div>
+
+        <div class="grid">
+            <div id="noResults" class="no-results">Nie znaleziono map.</div>
+    
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/01_karelia_mmap.png" alt="Karelia" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Karelia</div>
+                    <div class="internal-name">01_karelia</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/02_malinovka_mmap.png" alt="Malinowka" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Malinowka</div>
+                    <div class="internal-name">02_malinovka</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/04_himmelsdorf_mmap.png" alt="Himmelsdorf" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Himmelsdorf</div>
+                    <div class="internal-name">04_himmelsdorf</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/05_prohorovka_mmap.png" alt="Prochorowka" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Prochorowka</div>
+                    <div class="internal-name">05_prohorovka</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/06_ensk_mmap.png" alt="Ensk" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Ensk</div>
+                    <div class="internal-name">06_ensk</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/07_lakeville_mmap.png" alt="Lakeville" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Lakeville</div>
+                    <div class="internal-name">07_lakeville</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/08_ruinberg_mmap.png" alt="Ruinberg" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Ruinberg</div>
+                    <div class="internal-name">08_ruinberg</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/101_dday_mmap.png" alt="Overlord" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Overlord</div>
+                    <div class="internal-name">101_dday</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/105_germany_mmap.png" alt="Berlin" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Berlin</div>
+                    <div class="internal-name">105_germany</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/10_hills_mmap.png" alt="Kopalnie" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Kopalnie</div>
+                    <div class="internal-name">10_hills</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/112_eiffel_tower_ctf_mmap.png" alt="Paryż" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Paryż</div>
+                    <div class="internal-name">112_eiffel_tower_ctf</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/114_czech_mmap.png" alt="Pilzno" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Pilzno</div>
+                    <div class="internal-name">114_czech</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/115_sweden_mmap.png" alt="Lodowiec" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Lodowiec</div>
+                    <div class="internal-name">115_sweden</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/11_murovanka_mmap.png" alt="Murowanka" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Murowanka</div>
+                    <div class="internal-name">11_murovanka</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/121_lost_paradise_v_mmap.png" alt="Zatoka małży" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Zatoka małży</div>
+                    <div class="internal-name">121_lost_paradise_v</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/127_japort_mmap.png" alt="Bezpieczna przystań" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Bezpieczna przystań</div>
+                    <div class="internal-name">127_japort</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/128_last_frontier_v_mmap.png" alt="Posterunek" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Posterunek</div>
+                    <div class="internal-name">128_last_frontier_v</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/13_erlenberg_mmap.png" alt="Erlenberg" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Erlenberg</div>
+                    <div class="internal-name">13_erlenberg</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/14_siegfried_line_mmap.png" alt="Linia zygfryda" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Linia zygfryda</div>
+                    <div class="internal-name">14_siegfried_line</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/18_cliff_mmap.png" alt="Urwisko" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Urwisko</div>
+                    <div class="internal-name">18_cliff</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/19_monastery_mmap.png" alt="Klasztor" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Klasztor</div>
+                    <div class="internal-name">19_monastery</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/23_westfeld_mmap.png" alt="Westfield" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Westfield</div>
+                    <div class="internal-name">23_westfeld</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/28_desert_mmap.png" alt="Piaszczysta rzeka" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Piaszczysta rzeka</div>
+                    <div class="internal-name">28_desert</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/29_el_hallouf_mmap.png" alt="El halluf" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">El halluf</div>
+                    <div class="internal-name">29_el_hallouf</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/31_airfield_mmap.png" alt="Lotnisko" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Lotnisko</div>
+                    <div class="internal-name">31_airfield</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/33_fjord_mmap.png" alt="Fiordy" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Fiordy</div>
+                    <div class="internal-name">33_fjord</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/34_redshire_mmap.png" alt="Redshire" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Redshire</div>
+                    <div class="internal-name">34_redshire</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/35_steppes_mmap.png" alt="Step" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Step</div>
+                    <div class="internal-name">35_steppes</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/36_fishing_bay_mmap.png" alt="Zatoka rybacka" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Zatoka rybacka</div>
+                    <div class="internal-name">36_fishing_bay</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/37_caucasus_mmap.png" alt="Przełęcz" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Przełęcz</div>
+                    <div class="internal-name">37_caucasus</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/38_mannerheim_line_mmap.png" alt="Linia mannerheima" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Linia mannerheima</div>
+                    <div class="internal-name">38_mannerheim_line</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/44_north_america_mmap.png" alt="Dębina" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Dębina</div>
+                    <div class="internal-name">44_north_america</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/45_north_america_mmap.png" alt="Autostrada" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Autostrada</div>
+                    <div class="internal-name">45_north_america</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/47_canada_a_mmap.png" alt="Cichy brzeg" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Cichy brzeg</div>
+                    <div class="internal-name">47_canada_a</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/59_asia_great_wall_mmap.png" alt="Granica imperium" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Granica imperium</div>
+                    <div class="internal-name">59_asia_great_wall</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/60_asia_miao_mmap.png" alt="Rzeka perłowa" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Rzeka perłowa</div>
+                    <div class="internal-name">60_asia_miao</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/63_tundra_mmap.png" alt="Tundra" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Tundra</div>
+                    <div class="internal-name">63_tundra</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/95_lost_city_ctf_mmap.png" alt="Miasto duchów" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Miasto duchów</div>
+                    <div class="internal-name">95_lost_city_ctf</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="image-container">
+                    <img src="./wszystkie_ikony_map/99_poland_mmap.png" alt="Studzianki" onload="this.style.opacity='1'">
+                </div>
+                <div class="map-info">
+                    <div class="map-name">Studzianki</div>
+                    <div class="internal-name">99_poland</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const previewPanel = document.getElementById('preview-panel');
+        const previewImg = document.getElementById('preview-img');
+        const previewName = document.getElementById('preview-name');
+        const previewInternal = document.getElementById('preview-internal');
+
+        function openPreview(imgSrc, name, internal) {
+            previewImg.src = imgSrc;
+            previewName.innerText = name;
+            previewInternal.innerText = internal;
+            previewPanel.classList.add('active');
+            document.body.classList.add('preview-open');
+        }
+
+        function closePreview() {
+            previewPanel.classList.remove('active');
+            document.body.classList.remove('preview-open');
+        }
+
+        document.querySelectorAll('.map-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const img = card.querySelector('img');
+                const name = card.querySelector('.map-name').innerText;
+                const internal = card.querySelector('.internal-name').innerText;
+                openPreview(img.src, name, internal);
+            });
+        });
+
+        const searchInput = document.getElementById('mapSearch');
+        const mapCards = document.querySelectorAll('.map-card');
+        const noResults = document.getElementById('noResults');
+        const subtitle = document.querySelector('.subtitle');
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            let count = 0;
+            mapCards.forEach(card => {
+                const name = card.querySelector('.map-name').innerText.toLowerCase();
+                const internal = card.querySelector('.internal-name').innerText.toLowerCase();
+                if (name.includes(term) || internal.includes(term)) {
+                    card.style.display = 'flex';
+                    count++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            noResults.style.display = count === 0 ? 'block' : 'none';
+            subtitle.innerText = `Aktualne mapy w grze (${count})`;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePreview();
+        });
+
+        subtitle.innerText = `Aktualne mapy w grze (${mapCards.length})`;
+    </script>
+</body>
+</html>
